@@ -265,7 +265,7 @@ class IRCClient(object):
     def kick(self, chan, nick, msg=""):
         self.send("KICK", chan, nick, ":"+msg)
     def ns_identify(self, passwd):
-        self.msg("NickServ", "IDENTIFY {0} {1}".format(self.nickname, passwd))
+        self.msg("NickServ", "IDENTIFY {0}".format(passwd))
     def ns_ghost(self):
         self.msg("NickServ", "GHOST "+self.nickname)
     def ns_release(self):
