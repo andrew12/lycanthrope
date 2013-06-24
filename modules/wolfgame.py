@@ -84,24 +84,29 @@ if botconfig.DEBUG_MODE:
 def connect_callback(cli):
     to_be_devoiced = []
     cmodes = []
-    
-    @hook("quietlist", hookid=294)
-    def on_quietlist(cli, server, botnick, channel, q, quieted, by, something):
-        if re.match(".+\!\*@\*", quieted):  # only unquiet people quieted by bot
-            cmodes.append(("-q", quieted))
 
-    @hook("whospcrpl", hookid=294)
-    def on_whoreply(cli, server, nick, ident, cloak, user, status, acc):
-        if user in var.USERS: return  # Don't add someone who is already there
-        if user == botconfig.NICK:
-            cli.nickname = user
-            cli.ident = ident
-            cli.hostmask = cloak
-        if acc == "0":
-            acc = "*"
-        if "+" in status:
-            to_be_devoiced.append(user)
-        var.USERS[user] = dict(cloak=cloak,account=acc)
+    @hook("whoreply", hookid=294)
+    def on_whoreply(cli, server, nick, chan, ident, cloak, serv, user, status, text):
+        if chan.lower() == botconfig.CHANNEL.lower():
+            acc, gecos = text.split(' ', 1)
+            if user in var.USERS:
+                return  # Don't add someone who is already there
+    
+            if user == botconfig.NICK:
+                cli.nickname = user
+                cli.ident = ident
+                cli.hostmask = cloak
+
+            if acc == "0":
+                acc = "*"
+
+            if "+" in status:
+                to_be_devoiced.append(user)
+
+                var.USERS[user] = dict(cloak=cloak,account=acc)
+            # elif chan.lower() == botconfig.DEAD_CHANNEL.lower():
+            #     if user != botconfig.NICK:
+            #         cli.kick(botconfig.DEAD_CHANNEL, nick, "No active game.")
         
     @hook("endofwho", hookid=294)
     def afterwho(*args):
@@ -112,21 +117,12 @@ def connect_callback(cli):
         @hook("mode", hookid=294)
         def on_give_me_ops(cli, blah, blahh, modeaction, target="", *other):
             if modeaction == "+o" and target == botconfig.NICK and var.PHASE == "none":
-                
-                @hook("quietlistend", 294)
-                def on_quietlist_end(cli, svr, nick, chan, *etc):
-                    if chan == botconfig.CHANNEL:
-                        decorators.unhook(HOOKS, 294)
-                        mass_mode(cli, cmodes)
-                
-                cli.mode(botconfig.CHANNEL, "q")  # unquiet all
-
                 cli.mode(botconfig.CHANNEL, "-m")  # remove -m mode from channel
             elif modeaction == "+o" and target == botconfig.NICK and var.PHASE != "none":
                 decorators.unhook(HOOKS, 294)  # forget about it
 
 
-    cli.who(botconfig.CHANNEL, "%nuhaf")
+    cli.who(botconfig.CHANNEL)
 
 
 def mass_mode(cli, md):
@@ -254,19 +250,19 @@ def pinger(cli, nick, chan, rest):
 
 
     @hook("whoreply", hookid=800)
-    def on_whoreply(cli, server, dunno, chan, dunno1,
-                    cloak, dunno3, user, status, dunno4):
-        if not var.PINGING: return
-        if user in (botconfig.NICK, nick): return  # Don't ping self.
+    def on_whoreply(cli, server, nick, chan, ident, cloak, serv, user, status, text):
+       acc, gecos = text.split(' ', 1)
+       if not var.PINGING: return
+       if user in (botconfig.NICK, nick): return    # Don't ping self.
 
-        if (all((not var.OPT_IN_PING,
-                 'G' not in status,  # not /away
-                 '+' not in status,  # not already joined (voiced)
-                 cloak not in var.AWAY)) or
-            all((var.OPT_IN_PING, '+' not in status,
-                 cloak in var.PING_IN))):
+       if (all((not var.OPT_IN_PING,
+                'G' not in status,    # not /away
+                '+' not in status,    # not already joined (voiced)
+                cloak not in var.AWAY)) or
+           all((var.OPT_IN_PING, '+' not in status,
+                cloak in var.PING_IN))):
 
-            TO_PING.append(user)
+           TO_PING.append(user)
 
 
     @hook("endofwho", hookid=800)

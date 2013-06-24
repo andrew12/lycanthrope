@@ -96,12 +96,11 @@ hook = decorators.generate(HOOKS, raw_nick=True, permissions=False)
 
 def connect_callback(cli):
 
-    def prepare_stuff(*args):    
+    def prepare_stuff(*args):
+        cli.nick(botconfig.NICK)
+        cli.ns_identify(botconfig.PASS)
         cli.join(botconfig.CHANNEL)
-        cli.msg("ChanServ", "op "+botconfig.CHANNEL)
-        
-        cli.cap("REQ", "extended-join")
-        cli.cap("REQ", "account-notify")
+        cli.msg("ChanServ", "OP "+botconfig.CHANNEL)
         
         try:
             ld.MODULES[ld.CURRENT_MODULE].connect_callback(cli)
@@ -128,34 +127,6 @@ def connect_callback(cli):
         decorators.unhook(HOOKS, 239)
         hook("unavailresource")(mustrelease)
         hook("nicknameinuse")(mustregain)
-        
-    if botconfig.SASL_AUTHENTICATION:
-    
-        @hook("authenticate")
-        def auth_plus(cli, something, plus):
-            if plus == "+":
-                nick_b = bytes(botconfig.USERNAME if botconfig.USERNAME else botconfig.NICK, "utf-8")
-                pass_b = bytes(botconfig.PASS, "utf-8")
-                secrt_msg = b'\0'.join((nick_b, nick_b, pass_b))
-                cli.send("AUTHENTICATE " + b64encode(secrt_msg).decode("utf-8"))
-    
-        @hook("cap")
-        def on_cap(cli, svr, mynick, ack, cap):
-            if ack.upper() == "ACK" and "sasl" in cap:
-                cli.send("AUTHENTICATE PLAIN")
-                
-        @hook("903")
-        def on_successful_auth(cli, blah, blahh, blahhh):
-            cli.cap("END")
-            
-        @hook("904")
-        @hook("905")
-        @hook("906")
-        @hook("907")
-        def on_failure_auth(cli, *etc):
-            cli.quit()
-            print("Authentication failed.  Did you fill the account name "+
-                  "in botconfig.USERNAME if it's different from the bot nick?")
                
         
         

@@ -72,7 +72,7 @@ def add_commands(d):
                "mode",
                "nick",
                "who",
-               "cap"))
+               "invite"))
 class IRCClient(object):
     """ IRC Client class. This handles one connection to a server.
     This can be used either with or without IRCApp ( see connect() docs )
@@ -108,7 +108,6 @@ class IRCClient(object):
         self.authname = ""
         self.connect_cb = None
         self.blocking = True
-        self.sasl_auth = False
         self.use_ssl = False
         self.lock = threading.RLock()
         
@@ -184,18 +183,8 @@ class IRCClient(object):
             if not self.blocking:
                 self.socket.setblocking(0)
             
-            if not self.sasl_auth:
-                self.send("PASS {0}:{1}".format(self.authname if self.authname else self.nickname, 
-                    self.password if self.password else "NOPASS"))
-            else:
-                self.cap("LS")
-            
             self.nick(self.nickname)
             self.user(self.nickname, self.real_name)
-
-            if self.sasl_auth:
-                self.cap("REQ", "multi-prefix")
-                self.cap("REQ", "sasl")
             
             if self.connect_cb:
                 try:

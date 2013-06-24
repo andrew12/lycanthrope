@@ -9,7 +9,7 @@ ADMINS_RATE_LIMIT = 300
 SHOTS_MULTIPLIER = .12  # ceil(shots_multiplier * len_players) = bullets given
 MAX_PLAYERS = 30
 DRUNK_SHOTS_MULTIPLIER = 3
-NIGHT_TIME_LIMIT = 120
+NIGHT_TIME_LIMIT = 180
 NIGHT_TIME_WARN = 90  # should be less than NIGHT_TIME_LIMIT
 DAY_TIME_LIMIT_WARN = 600
 DAY_TIME_LIMIT_CHANGE = 120  # seconds after DAY_TIME_LIMIT_WARN has passed
@@ -17,22 +17,22 @@ DAY_TIME_LIMIT_CHANGE = 120  # seconds after DAY_TIME_LIMIT_WARN has passed
 SHORT_DAY_PLAYERS = 6 # Number of players left to have a short day
 SHORT_DAY_LIMIT_WARN = 400
 SHORT_DAY_LIMIT_CHANGE = 120
-KILL_IDLE_TIME = 300
-WARN_IDLE_TIME = 180
+KILL_IDLE_TIME = 360
+WARN_IDLE_TIME = 240
 PART_GRACE_TIME = 12
 QUIT_GRACE_TIME = 30
 #  controls how many people it does in one /msg; only works for messages that are the same
 MAX_PRIVMSG_TARGETS = 2
-LEAVE_STASIS_PENALTY = 1
+LEAVE_STASIS_PENALTY = 0
 IDLE_STASIS_PENALTY = 0
-PART_STASIS_PENALTY = 1
+PART_STASIS_PENALTY = 0
 
 GOAT_HERDER = True
 
 SELF_LYNCH_ALLOWED = True
 
-CARE_BOLD = True
-CARE_COLOR = True
+CARE_BOLD = False
+CARE_COLOR = False
 KILL_COLOR = False
 KILL_BOLD = False
 
@@ -94,11 +94,16 @@ LYNCH_MESSAGES = ("The villagers, after much debate, finally decide on lynching 
 
 import botconfig
 
-RULES = (botconfig.CHANNEL + " channel rules: 1) Be nice to others. 2) Do not share information "+
-         "after death. 3) No bots allowed. 4) Do not play with clones.\n"+
-         "5) Do not quit unless you need to leave. 6) Keep it "+
-         "safe for work. 7) Do not paste PM's from the bot during the game. "+
-         "8) Use common sense. 9) Waiting for timeouts is discouraged.")
+RULES = (botconfig.CHANNEL + " channel rules: "
+         " 1) Be nice to others."
+         " 2) Do not share information after death."
+         " 3) Do not play with clones."
+         " 4) Do not quit unless you need to leave."
+         " 5) Do not paste PM's from the bot during the game."
+         " 6) Use common sense."
+         " 7) Waiting for timeouts is discouraged."
+         " 8) Don't take things too personally."
+        )
 
 # Other settings:
 START_WITH_DAY = False
