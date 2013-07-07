@@ -379,7 +379,7 @@ def join(cli, nick, chann_, rest):
 
     try:
         cloak = var.USERS[nick]['cloak']
-        if cloak is not None and var.illegal_joins[cloak] > 0:
+        if cloak is not None and cloak in var.illegal_joins and var.illegal_joins[cloak] > 0:
             cli.notice(nick, "Sorry, but you are in stasis for {0} games.".format(var.illegal_joins[cloak]))
             return
     except KeyError:
@@ -407,7 +407,7 @@ def join(cli, nick, chann_, rest):
     
         cli.mode(chan, "+v", nick)
         var.ROLES["person"].append(nick)
-        cli.msg(chan, '\u0002{0}\u0002 has joined the game. New player count: \u0002{1}\u0002'.format(nick, len(pl) + 1))
+        cli.msg(chan, '\u0002{0}\u0002 has joined the game and raised the number of players to \u0002{1}\u0002.'.format(nick, len(pl) + 1))
         
         var.LAST_STATS = None # reset
 
@@ -848,17 +848,17 @@ def chk_win(cli):
         lwolves -= len([x for x in var.WOUNDED if x in var.ROLES["traitor"]])
     
     if lwolves == lpl / 2:
-        cli.msg(chan, ("Game over! There are the same number of wolves as "+
-                       "villagers. The wolves eat everyone and win."))
+        cli.msg(chan, ("Game over! There are the same number of wolves as " +
+                       "uninjured villagers. The wolves overpower the villagers and win."))
         var.LOGGER.logMessage(("Game over! There are the same number of wolves as "+
-                               "villagers. The wolves eat everyone, and win."))
+                               "uninjured villagers. The wolves overpower the villagers and win."))
         village_win = False
         var.LOGGER.logBare("WOLVES", "WIN")
     elif lwolves > lpl / 2:
         cli.msg(chan, ("Game over! There are more wolves than "+
-                       "villagers. The wolves eat everyone, and win."))
+                       "uninjured villagers. The wolves overpower the villagers and win."))
         var.LOGGER.logMessage(("Game over! There are more wolves than "+
-                               "villagers. The wolves eat everyone, and win."))
+                               "uninjured villagers. The wolves overpower the villagers and win."))
         village_win = False
         var.LOGGER.logBare("WOLVES", "WIN")
     elif (not var.ROLES["wolf"] and
@@ -1320,7 +1320,7 @@ def transition_day(cli, gameid=0):
     var.DAY_START_TIME = datetime.now()
 
     if (not len(var.SEEN)+len(var.KILLS)+len(var.OBSERVED) # neither seer nor wolf acted
-            and var.FIRST_NIGHT and var.ROLES["seer"] and not botconfig.DEBUG_MODE):
+            and not var.START_WITH_DAY and var.FIRST_NIGHT and var.ROLES["seer"] and not botconfig.DEBUG_MODE):
         cli.msg(botconfig.CHANNEL, "\02The wolves all die of a mysterious plague.\02")
         for x in var.ROLES["wolf"]+var.ROLES["werecrow"]+var.ROLES["traitor"]:
             if not del_player(cli, x, True):
@@ -1570,7 +1570,7 @@ def retract(cli, nick, chann_, rest):
             var.VOTES[voter].remove(nick)
             if not var.VOTES[voter]:
                 del var.VOTES[voter]
-            cli.msg(chan, "\u0002{0}\u0002's vote was retracted".format(nick))
+            cli.msg(chan, "\u0002{0}\u0002's vote was retracted.".format(nick))
             var.LOGGER.logBare(voter, "RETRACT", nick)
             var.LOGGER.logMessage("{0}'s vote was retracted.".format(nick))
             var.LAST_VOTES = None # reset
@@ -2341,6 +2341,11 @@ def start(cli, nick, chann_, rest):
     var.CURSED = []
     var.GUNNERS = {}
     var.WOLF_GUNNERS = {}
+    var.SEEN = []
+    var.OBSERVED = {}
+    var.KILLS = {}
+    var.GUARDED = {}
+    var.HVISITED = {}
 
     villager_roles = ("gunner", "cursed villager")
     for i, count in enumerate(addroles):
@@ -2399,8 +2404,8 @@ def start(cli, nick, chann_, rest):
     
     var.DAY_TIMEDELTA = timedelta(0)
     var.NIGHT_TIMEDELTA = timedelta(0)
-    var.DAY_START_TIME = None
-    var.NIGHT_START_TIME = None
+    var.DAY_START_TIME = datetime.now()
+    var.NIGHT_START_TIME = datetime.now()
 
     var.LAST_PING = None
     
@@ -2443,9 +2448,11 @@ def start(cli, nick, chann_, rest):
     else:
         transition_day(cli)
 
-    for cloak in var.illegal_joins:
+    for cloak in list(var.illegal_joins.keys()):
         if var.illegal_joins[cloak] != 0:
             var.illegal_joins[cloak] -= 1
+        else:
+            del var.illegal_joins[cloak]
 
     # DEATH TO IDLERS!
     reapertimer = threading.Thread(None, reaper, args=(cli,var.GAME_ID))
