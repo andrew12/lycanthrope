@@ -501,7 +501,7 @@ def stats(cli, nick, chan, rest):
         # only do this rate-limiting stuff if the person is in game
         if (var.LAST_STATS and
             var.LAST_STATS + timedelta(seconds=var.STATS_RATE_LIMIT) > datetime.now()):
-            cli.msg(chan, nick+": This command is rate-limited.")
+            cli.notice(nick, "This command is rate-limited.")
             return
             
         var.LAST_STATS = datetime.now()
@@ -667,7 +667,7 @@ def show_votes(cli, nick, chan, rest):
     
     if (var.LAST_VOTES and
         var.LAST_VOTES + timedelta(seconds=var.VOTES_RATE_LIMIT) > datetime.now()):
-        cli.msg(chan, nick+": This command is rate-limited.")
+        cli.notice(nick, "This command is rate-limited.")
         return    
     
     pl = var.list_players()
@@ -1031,12 +1031,12 @@ def update_last_said(cli, nick, chan, rest):
         if var.KILL_BOLD:
             cli.send("KICK {0} {1} :Using bold is not allowed".format(botconfig.CHANNEL, nick))
         else:
-            cli.msg(botconfig.CHANNEL, nick + ": Using bold in the channel is not allowed.")
+            cli.notice(nick, "Using bold in the channel is not allowed.")
     if var.CARE_COLOR and any(code in fullstring for code in ["\x03", "\x16", "\x1f" ]):
         if var.KILL_COLOR:
             cli.send("KICK {0} {1} :Using color is not allowed".format(botconfig.CHANNEL, nick))
         else:
-            cli.msg(botconfig.CHANNEL, nick + ": Using color in the channel is not allowed.")
+            cli.notice(nick, "Using color in the channel is not allowed.")
 
 @hook("join")
 def on_join(cli, raw_nick, chan, acc="*", rname=""):
@@ -1051,7 +1051,6 @@ def on_join(cli, raw_nick, chan, acc="*", rname=""):
                 del var.DISCONNECTED[nick]
                 var.LAST_SAID_TIME[nick] = datetime.now()
                 cli.msg(chan, "\02{0}\02 has returned to the village.".format(nick))
-                make_stasis(nick, -var.PART_STASIS_PENALTY)
                 for r,rlist in var.ORIGINAL_ROLES.items():
                     if "(dced)"+nick in rlist:
                         rlist.remove("(dced)"+nick)
@@ -1184,7 +1183,6 @@ def on_nick(cli, prefix, nick):
                     
                     cli.msg(chan, ("\02{0}\02 has returned to "+
                                    "the village.").format(nick))
-                    make_stasis(nick, -var.PART_STASIS_PENALTY)
 
 def leave(cli, what, nick, why=""):
     nick, _, _, cloak = parse_nick(nick)
@@ -1222,9 +1220,6 @@ def leave(cli, what, nick, why=""):
                "\02{1}\02 is lost to the ravine forever.").format(nick, var.get_role(nick))
     cli.msg(botconfig.CHANNEL, msg)
     var.LOGGER.logMessage(msg.replace("\02", ""))
-    if var.PHASE != "join":
-        make_stasis(nick, var.PART_STASIS_PENALTY)
-
     if killplayer:
         del_player(cli, nick)
     else:
@@ -1457,10 +1452,10 @@ def transition_day(cli, gameid=0):
 
 
 def chk_nightdone(cli):
-    if (len(var.SEEN) == len(var.ROLES["seer"]) and  # Seers have seen.
-        len(var.HVISITED.keys()) == len(var.ROLES["harlot"]) and  # harlots have visited.
-        len(var.GUARDED.keys()) == len(var.ROLES["guardian angel"]) and  # guardians have guarded
-        len(var.ROLES["werecrow"]+var.ROLES["wolf"]) == len(var.KILLS)+len(var.OBSERVED) and
+    if (len(var.SEEN) >= len(var.ROLES["seer"]) and  # Seers have seen.
+        len(var.HVISITED.keys()) >= len(var.ROLES["harlot"]) and  # harlots have visited.
+        len(var.GUARDED.keys()) >= len(var.ROLES["guardian angel"]) and  # guardians have guarded
+        len(var.KILLS)+len(var.OBSERVED) >= len(var.ROLES["werecrow"]+var.ROLES["wolf"]) and
         var.PHASE == "night"):
         
         # check if wolves are actually agreeing
@@ -1739,7 +1734,7 @@ def kill(cli, nick, rest):
     if victim == nick:
         pm(cli, nick, "Suicide is bad.  Don't do it.")
         return
-    if victim in var.ROLES["wolf"]+var.ROLES["werecrow"]:
+    if victim in var.ROLES["wolf"]+var.ROLES["werecrow"]+var.ROLES["traitor"]:
         pm(cli, nick, "You may only kill villagers, not other wolves.")
         return
     var.KILLS[nick] = victim
@@ -1846,7 +1841,7 @@ def observe(cli, nick, rest):
                    "to \u0002{0}'s\u0002 house. You will return after "+
                   "collecting your observations when day begins.").format(victim))
     var.LOGGER.logBare(victim, "OBSERVED", nick)
-
+    chk_nightdone(cli)
 
 
 @pmcmd("id")
@@ -1989,7 +1984,7 @@ def see(cli, nick, rest):
             pm(cli, nick,"\u0002{0}\u0002 is currently not playing.".format(victim))
             return
     victim = pl[pll.index(target)]
-    if victim in var.CURSED:
+    if victim in var.CURSED or var.get_role(victim) == "werecrow":
         role = "wolf"
     elif var.get_role(victim) == "traitor":
         role = "villager"
